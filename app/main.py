@@ -1,8 +1,10 @@
+
 import streamlit as st
 import pandas as pd
 import requests
 import re
 import html
+import base64
 
 from recommender import (
     recommend_movies,
@@ -33,6 +35,9 @@ try:
 except Exception:
     TMDB_API_KEY = ""
 
+TMDB_API_KEY = str(TMDB_API_KEY).strip()
+
+TMDB_API_BASE = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/"
 TMDB_POSTER_SIZE = "w500"
 TMDB_BACKDROP_SIZE = "w1280"
@@ -97,13 +102,6 @@ hr {
     margin-top: -4px;
 }
 
-.nav-caption {
-    font-size: 11px;
-    color: #888888;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-}
-
 /* HERO */
 
 .hero-container {
@@ -113,7 +111,7 @@ hr {
     border-radius: 13px;
     overflow: hidden;
     margin-top: 22px;
-    margin-bottom: 35px;
+    margin-bottom: 20px;
     background-color: #252525;
     background-position: center 25%;
     background-size: cover;
@@ -166,7 +164,6 @@ hr {
     letter-spacing: -1.5px;
     color: #FFFFFF;
     margin-bottom: 15px;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
 
 .hero-description {
@@ -181,7 +178,6 @@ hr {
     color: #D0D0D0;
     font-size: 12px;
     margin-top: 15px;
-    letter-spacing: 0.5px;
 }
 
 .hero-score {
@@ -212,51 +208,20 @@ hr {
 
 /* MOVIE CARDS */
 
-.movie-card {
-    position: relative;
+div[data-testid="stVerticalBlockBorderWrapper"] {
     background: #1E1E1E;
     border: 1px solid #292929;
     border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 5px;
-    transition:
-        transform 0.28s ease,
-        box-shadow 0.28s ease,
-        border-color 0.28s ease;
+    transition: transform 0.25s ease, border-color 0.25s ease;
 }
 
-.movie-card:hover {
-    transform: translateY(-7px) scale(1.025);
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
     border-color: #E50914;
-    box-shadow: 0 14px 28px rgba(0,0,0,0.55);
-    z-index: 5;
 }
 
-.movie-poster {
-    width: 100%;
-    height: 280px;
+div[data-testid="stImage"] img {
+    border-radius: 5px;
     object-fit: cover;
-    object-position: center;
-    display: block;
-    background: #303030;
-    transition: transform 0.35s ease;
-}
-
-.movie-card:hover .movie-poster {
-    transform: scale(1.035);
-}
-
-.poster-placeholder {
-    height: 280px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, #303030, #151515);
-    font-size: 42px;
-}
-
-.movie-card-content {
-    padding: 12px 12px 14px 12px;
 }
 
 .movie-title {
@@ -265,7 +230,7 @@ hr {
     font-weight: 800;
     line-height: 1.45;
     min-height: 37px;
-    margin-bottom: 5px;
+    margin-top: 8px;
 }
 
 .movie-genres {
@@ -279,7 +244,7 @@ hr {
     color: #46D369;
     font-size: 11px;
     font-weight: 800;
-    margin-top: 9px;
+    margin-top: 7px;
 }
 
 .movie-score {
@@ -290,17 +255,20 @@ hr {
 }
 
 .movie-rank {
-    position: absolute;
-    top: 9px;
-    left: 9px;
-    background: rgba(15,15,15,0.88);
-    color: #FFFFFF;
-    border: 1px solid #555555;
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-size: 10px;
-    font-weight: 850;
-    z-index: 2;
+    color: #E50914;
+    font-size: 11px;
+    font-weight: 900;
+    margin-bottom: 5px;
+}
+
+.poster-placeholder {
+    height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #303030, #151515);
+    border-radius: 5px;
+    font-size: 42px;
 }
 
 /* BUTTONS */
@@ -326,7 +294,6 @@ hr {
 .stButton > button:focus {
     color: #FFFFFF;
     border-color: #E50914;
-    box-shadow: 0 0 0 2px rgba(229,9,20,0.25);
 }
 
 /* NAVIGATION RADIO */
@@ -340,7 +307,6 @@ div[role="radiogroup"] label {
     border: 1px solid transparent;
     border-radius: 5px;
     padding: 6px 12px;
-    transition: 0.2s ease;
 }
 
 div[role="radiogroup"] label:hover {
@@ -430,20 +396,6 @@ div[role="radiogroup"] label:has(input:checked) p {
     line-height: 1.8;
 }
 
-.detail-label {
-    color: #858585;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.detail-value {
-    color: #FFFFFF;
-    font-size: 13px;
-    font-weight: 700;
-    margin-top: 4px;
-}
-
 /* EMPTY STATES / FOOTER */
 
 .empty-state {
@@ -486,7 +438,6 @@ div[role="radiogroup"] label:has(input:checked) p {
 }
 
 .hero-container,
-.movie-card,
 .detail-panel {
     animation: fadeIn 0.45s ease both;
 }
@@ -494,7 +445,6 @@ div[role="radiogroup"] label:has(input:checked) p {
 /* RESPONSIVE */
 
 @media (max-width: 900px) {
-
     .block-container {
         padding-left: 1rem;
         padding-right: 1rem;
@@ -512,14 +462,12 @@ div[role="radiogroup"] label:has(input:checked) p {
         font-size: 32px;
     }
 
-    .movie-poster,
     .poster-placeholder {
         height: 220px;
     }
 }
 
 @media (max-width: 600px) {
-
     .hero-container {
         min-height: 300px;
     }
@@ -532,7 +480,6 @@ div[role="radiogroup"] label:has(input:checked) p {
         font-size: 26px;
     }
 
-    .movie-poster,
     .poster-placeholder {
         height: 180px;
     }
@@ -547,7 +494,6 @@ div[role="radiogroup"] label:has(input:checked) p {
 # ============================================================
 
 def safe_text(value):
-
     if pd.isna(value):
         return ""
 
@@ -555,7 +501,6 @@ def safe_text(value):
 
 
 def get_genres(value):
-
     if pd.isna(value) or not value:
         return []
 
@@ -563,7 +508,6 @@ def get_genres(value):
 
 
 def safe_score(value):
-
     try:
         return float(value)
     except (ValueError, TypeError):
@@ -571,56 +515,44 @@ def safe_score(value):
 
 
 def get_release_year(title):
-
     match = re.search(r"\((\d{4})\)\s*$", str(title))
 
     return match.group(1) if match else None
 
 
 def section_heading(title, subtitle=""):
-
     st.html(
         f"""
-        <div class="section-heading">
-            {title}
-        </div>
-
-        <div class="section-subheading">
-            {subtitle}
-        </div>
+        <div class="section-heading">{title}</div>
+        <div class="section-subheading">{subtitle}</div>
         """
     )
 
 
-def normalize_title(value):
-
-    return str(value).strip().casefold()
-
-
 # ============================================================
-# 5. TMDB SEARCH
+# 5. TMDB API
 # ============================================================
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_tmdb_movie(movie_title, api_key):
+    """
+    Search TMDB for a movie.
+
+    Returns movie metadata or a dictionary containing
+    an error message. This makes API problems diagnosable.
+    """
 
     if not api_key:
-        return None
+        return {"_error": "TMDB_API_KEY is missing from Streamlit Secrets."}
 
     title = str(movie_title)
     year = get_release_year(title)
 
-    search_title = title
-
-    if year:
-
-        search_title = re.sub(
-            r"\s*\(\d{4}\)\s*$",
-            "",
-            title
-        ).strip()
-
-    url = "https://api.themoviedb.org/3/search/movie"
+    search_title = re.sub(
+        r"\s*\(\d{4}\)\s*$",
+        "",
+        title
+    ).strip()
 
     params = {
         "api_key": api_key,
@@ -632,12 +564,21 @@ def get_tmdb_movie(movie_title, api_key):
         params["year"] = year
 
     try:
-
         response = requests.get(
-            url,
+            f"{TMDB_API_BASE}/search/movie",
             params=params,
-            timeout=8
+            timeout=15
         )
+
+        if response.status_code == 401:
+            return {
+                "_error": "TMDB rejected the API key. Check that your TMDB API v3 key is correct."
+            }
+
+        if response.status_code == 429:
+            return {
+                "_error": "TMDB rate limit reached. Please try again later."
+            }
 
         response.raise_for_status()
 
@@ -647,7 +588,6 @@ def get_tmdb_movie(movie_title, api_key):
             return None
 
         if year:
-
             exact_matches = [
                 item for item in results
                 if item.get("release_date", "").startswith(year)
@@ -668,53 +608,97 @@ def get_tmdb_movie(movie_title, api_key):
             "backdrop_path": result.get("backdrop_path")
         }
 
-    except (
-        requests.RequestException,
-        ValueError,
-        TypeError,
-        KeyError
-    ):
+    except requests.RequestException as error:
+        return {
+            "_error": f"TMDB connection error: {type(error).__name__}"
+        }
 
+    except (ValueError, TypeError, KeyError):
+        return {
+            "_error": "TMDB returned an unexpected response."
+        }
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_tmdb_image(image_path, image_size):
+    """
+    Download image bytes from TMDB.
+
+    Using image bytes with st.image avoids relying on
+    browser-side HTML image rendering.
+    """
+
+    if not image_path:
+        return None
+
+    image_url = (
+        TMDB_IMAGE_BASE
+        + image_size
+        + image_path
+    )
+
+    try:
+        response = requests.get(
+            image_url,
+            timeout=15
+        )
+
+        response.raise_for_status()
+
+        content_type = response.headers.get(
+            "Content-Type",
+            ""
+        )
+
+        if not content_type.startswith("image/"):
+            return None
+
+        return response.content
+
+    except requests.RequestException:
         return None
 
 
-def poster_url(metadata):
+def poster_image(metadata):
+    if not metadata or metadata.get("_error"):
+        return None
 
-    if metadata and metadata.get("poster_path"):
-
-        return (
-            TMDB_IMAGE_BASE
-            + TMDB_POSTER_SIZE
-            + metadata["poster_path"]
-        )
-
-    return None
+    return get_tmdb_image(
+        metadata.get("poster_path"),
+        TMDB_POSTER_SIZE
+    )
 
 
-def backdrop_url(metadata):
+def backdrop_image(metadata):
+    if not metadata or metadata.get("_error"):
+        return None
 
-    if metadata and metadata.get("backdrop_path"):
+    return get_tmdb_image(
+        metadata.get("backdrop_path"),
+        TMDB_BACKDROP_SIZE
+    )
 
-        return (
-            TMDB_IMAGE_BASE
-            + TMDB_BACKDROP_SIZE
-            + metadata["backdrop_path"]
-        )
 
-    return None
+def backdrop_css(image_bytes):
+    if not image_bytes:
+        return "background-image: linear-gradient(120deg, #303030, #141414);"
+
+    encoded = base64.b64encode(image_bytes).decode("utf-8")
+
+    return (
+        "background-image: url('data:image/jpeg;base64,"
+        + encoded
+        + "');"
+    )
 
 
 # ============================================================
 # 6. CATALOGUE PREPARATION
 # ============================================================
 
-# Discover uses the complete MovieLens catalogue.
-# This is intentionally NOT the recommendation dataframe.
-
 catalogue = movies.copy()
 
 catalogue["Title"] = catalogue["Title"].astype(str)
-
 catalogue["Genres"] = catalogue["Genres"].fillna("Unknown")
 
 catalogue = catalogue.drop_duplicates(
@@ -732,11 +716,7 @@ available_users = sorted(
 )
 
 if not available_users:
-
-    st.error(
-        "No users are available in the recommendation dataset."
-    )
-
+    st.error("No users are available in the recommendation dataset.")
     st.stop()
 
 
@@ -750,19 +730,14 @@ nav_left, nav_middle, nav_right = st.columns(
 )
 
 with nav_left:
-
     st.html("""
     <div class="brand">
         MOVIE<span class="brand-red">MIND</span>
     </div>
-
-    <div class="brand-subtitle">
-        Movie discovery
-    </div>
+    <div class="brand-subtitle">Movie discovery</div>
     """)
 
 with nav_middle:
-
     page = st.radio(
         "Navigation",
         ["Home", "Discover", "My Recommendations"],
@@ -772,7 +747,6 @@ with nav_middle:
     )
 
 with nav_right:
-
     selected_user = st.selectbox(
         "Profile",
         options=available_users,
@@ -790,13 +764,10 @@ if (
     "recommendations" not in st.session_state
     or st.session_state.get("loaded_user") != selected_user
 ):
-
     try:
-
         with st.spinner(
             "Preparing your personalized movie collection..."
         ):
-
             result = recommend_movies(
                 user_id=selected_user,
                 top_n=1000
@@ -806,11 +777,7 @@ if (
             st.session_state.loaded_user = selected_user
 
     except Exception as error:
-
-        st.error(
-            f"Recommendation error: {error}"
-        )
-
+        st.error(f"Recommendation error: {error}")
         st.stop()
 
 
@@ -821,25 +788,16 @@ recommendations = st.session_state.recommendations.copy()
 # 10. RECOMMENDATION LOOKUP
 # ============================================================
 
-# Create a lookup table of recommendation scores.
-# Catalogue movies do not receive fabricated recommendation scores.
-
 recommendation_lookup = {}
 
 if not recommendations.empty:
-
     for _, row in recommendations.iterrows():
-
-        recommendation_lookup[
-            int(row["MovieID"])
-        ] = {
+        recommendation_lookup[int(row["MovieID"])] = {
             "ContentScore": safe_score(row.get("ContentScore", 0)),
             "CollaborativeScore": safe_score(
                 row.get("CollaborativeScore", 0)
             ),
-            "HybridScore": safe_score(
-                row.get("HybridScore", 0)
-            )
+            "HybridScore": safe_score(row.get("HybridScore", 0))
         }
 
 
@@ -848,12 +806,22 @@ if not recommendations.empty:
 # ============================================================
 
 if "selected_movie_title" not in st.session_state:
-
     st.session_state.selected_movie_title = None
 
 
 # ============================================================
-# 12. MOVIE CARD COMPONENT
+# 12. TMDB STATUS MESSAGE
+# ============================================================
+
+if not TMDB_API_KEY:
+    st.warning(
+        "Movie posters are currently unavailable because "
+        "TMDB_API_KEY is not configured in Streamlit Secrets."
+    )
+
+
+# ============================================================
+# 13. MOVIE CARD COMPONENT
 # ============================================================
 
 def render_movie_card(
@@ -862,132 +830,97 @@ def render_movie_card(
     card_key,
     show_model_score=False
 ):
-
     title = str(movie["Title"])
-
     genres = safe_text(movie.get("Genres", "Unknown"))
-
-    movie_id = int(movie["MovieID"])
 
     metadata = get_tmdb_movie(
         title,
         TMDB_API_KEY
     )
 
-    image = poster_url(metadata)
+    image_bytes = poster_image(metadata)
 
-    if image:
+    with st.container(border=True):
 
-        poster_html = f"""
-        <img
-            class="movie-poster"
-            src="{html.escape(image, quote=True)}"
-            alt="{safe_text(title)} poster"
-            loading="lazy"
-        >
-        """
+        if rank is not None:
+            st.html(
+                f'<div class="movie-rank">#{rank}</div>'
+            )
 
-    else:
+        if image_bytes:
+            st.image(
+                image_bytes,
+                use_container_width=True
+            )
+        else:
+            st.html("""
+            <div class="poster-placeholder">
+                🎬
+            </div>
+            """)
 
-        poster_html = """
-        <div class="poster-placeholder">
-            🎬
-        </div>
-        """
-
-    rating_html = ""
-
-    if metadata and metadata.get("vote_average"):
-
-        rating_html = (
-            '<div class="movie-rating">'
-            f'★ {float(metadata["vote_average"]):.1f}/10 TMDB'
-            '</div>'
-        )
-
-    score_html = ""
-
-    if show_model_score:
-
-        score_html = (
-            '<div class="movie-score">'
-            f'Match Score: '
-            f'{safe_score(movie.get("HybridScore", 0)):.3f}'
-            '</div>'
-        )
-
-    rank_html = ""
-
-    if rank is not None:
-
-        rank_html = (
-            '<div class="movie-rank">'
-            f'#{rank}'
-            '</div>'
-        )
-
-    card_html = f"""
-    <div class="movie-card">
-
-        {rank_html}
-
-        {poster_html}
-
-        <div class="movie-card-content">
-
+        st.html(
+            f"""
             <div class="movie-title">
                 {safe_text(title)}
             </div>
-
             <div class="movie-genres">
                 {genres}
             </div>
+            """
+        )
 
-            {rating_html}
+        if metadata and not metadata.get("_error"):
+            rating = metadata.get("vote_average")
 
-            {score_html}
+            if rating:
+                st.html(
+                    f"""
+                    <div class="movie-rating">
+                        ★ {float(rating):.1f}/10 TMDB
+                    </div>
+                    """
+                )
 
-        </div>
+        if show_model_score:
+            score = safe_score(
+                movie.get("HybridScore", 0)
+            )
 
-    </div>
-    """
+            st.html(
+                f"""
+                <div class="movie-score">
+                    Match Score: {score:.3f}
+                </div>
+                """
+            )
 
-    st.html(card_html)
-
-    if st.button(
-        "More Information",
-        key=f"details_{card_key}",
-        use_container_width=True
-    ):
-
-        st.session_state.selected_movie_title = title
-
-        st.rerun()
+        if st.button(
+            "More Information",
+            key=f"details_{card_key}",
+            use_container_width=True
+        ):
+            st.session_state.selected_movie_title = title
+            st.rerun()
 
 
 # ============================================================
-# 13. MOVIE DETAIL VIEW
+# 14. MOVIE DETAIL VIEW
 # ============================================================
 
 def render_movie_details(title):
-
-    # Look up movie from the FULL catalogue.
-    # No longer dependent on recommendations.
 
     movie_rows = catalogue[
         catalogue["Title"] == title
     ]
 
     if movie_rows.empty:
-
         st.warning(
             "The selected movie could not be found in the catalogue."
         )
-
         return
 
     movie = movie_rows.iloc[0]
-
     movie_id = int(movie["MovieID"])
 
     metadata = get_tmdb_movie(
@@ -1003,18 +936,14 @@ def render_movie_details(title):
     )
 
     with left:
+        image_bytes = poster_image(metadata)
 
-        image = poster_url(metadata)
-
-        if image:
-
+        if image_bytes:
             st.image(
-                image,
+                image_bytes,
                 use_container_width=True
             )
-
         else:
-
             st.html("""
             <div class="poster-placeholder">
                 🎬
@@ -1023,14 +952,12 @@ def render_movie_details(title):
 
     with right:
 
-        overview = (
-            metadata.get("overview", "")
-            if metadata else
-            ""
-        )
+        overview = ""
+
+        if metadata and not metadata.get("_error"):
+            overview = metadata.get("overview", "")
 
         if not overview:
-
             overview = (
                 "An overview is not available from TMDB "
                 "for this movie."
@@ -1039,53 +966,41 @@ def render_movie_details(title):
         st.html(
             f"""
             <div class="detail-panel">
-
                 <div class="detail-title">
                     {safe_text(title)}
                 </div>
-
                 <div class="detail-overview">
                     {safe_text(overview)}
                 </div>
-
             </div>
             """
         )
 
         year = (
             metadata.get("release_date", "")[:4]
-            if metadata and metadata.get("release_date")
+            if metadata and not metadata.get("_error")
+            and metadata.get("release_date")
             else get_release_year(title) or "Unknown"
         )
 
         tmdb_rating = (
             f'{float(metadata["vote_average"]):.1f}/10'
-            if metadata and metadata.get("vote_average")
+            if metadata and not metadata.get("_error")
+            and metadata.get("vote_average")
             else "Not available"
         )
 
         detail1, detail2 = st.columns(2)
 
-        detail1.metric(
-            "Release Year",
-            year
-        )
-
-        detail2.metric(
-            "TMDB Rating",
-            tmdb_rating
-        )
+        detail1.metric("Release Year", year)
+        detail2.metric("TMDB Rating", tmdb_rating)
 
         genre_text = str(
             movie["Genres"]
         ).replace("|", " • ")
 
         st.markdown("**Genres**")
-
         st.write(genre_text)
-
-        # Only display model scores if this movie is actually
-        # present in the model's recommendation results.
 
         if movie_id in recommendation_lookup:
 
@@ -1116,31 +1031,30 @@ def render_movie_details(title):
             )
 
         else:
-
             st.caption(
                 "This movie is in the catalogue but is not "
                 "currently included in this profile's "
                 "recommendation results."
             )
 
+        if metadata and metadata.get("_error"):
+            st.warning(metadata["_error"])
+
     if st.button(
         "← Back to Movies",
         key="back_to_movies"
     ):
-
         st.session_state.selected_movie_title = None
-
         st.rerun()
 
 
 # ============================================================
-# 14. HERO DATA
+# 15. HERO DATA
 # ============================================================
 
 if not recommendations.empty:
 
     hero_movie = recommendations.iloc[0]
-
     hero_title = str(hero_movie["Title"])
 
     hero_metadata = get_tmdb_movie(
@@ -1148,46 +1062,37 @@ if not recommendations.empty:
         TMDB_API_KEY
     )
 
-    hero_background = backdrop_url(hero_metadata)
-
-    if hero_background:
-
-        hero_background_css = (
-            "background-image: url('"
-            + html.escape(hero_background, quote=True)
-            + "');"
-        )
-
-    else:
-
-        hero_background_css = """
-        background-image:
-            linear-gradient(120deg, #303030, #141414);
-        """
+    hero_background_bytes = backdrop_image(hero_metadata)
+    hero_background_css = backdrop_css(hero_background_bytes)
 
     hero_overview = (
         hero_metadata.get("overview", "")
-        if hero_metadata else
-        "A personalized movie selection generated "
-        "by your hybrid recommendation model."
+        if hero_metadata and not hero_metadata.get("_error")
+        else ""
     )
 
-    if len(hero_overview) > 260:
-
+    if not hero_overview:
         hero_overview = (
-            hero_overview[:257].rsplit(" ", 1)[0]
-            + "..."
+            "A personalized movie selection generated "
+            "by your hybrid recommendation model."
+        )
+
+    if len(hero_overview) > 260:
+        hero_overview = (
+            hero_overview[:257].rsplit(" ", 1)[0] + "..."
         )
 
     hero_year = (
         hero_metadata.get("release_date", "")[:4]
-        if hero_metadata and hero_metadata.get("release_date")
+        if hero_metadata and not hero_metadata.get("_error")
+        and hero_metadata.get("release_date")
         else get_release_year(hero_title) or ""
     )
 
     hero_rating = (
         f'★ {float(hero_metadata["vote_average"]):.1f}/10'
-        if hero_metadata and hero_metadata.get("vote_average")
+        if hero_metadata and not hero_metadata.get("_error")
+        and hero_metadata.get("vote_average")
         else "Personalized Pick"
     )
 
@@ -1196,18 +1101,16 @@ if not recommendations.empty:
     )
 
 else:
-
     hero_title = None
 
 
 # ============================================================
-# 15. HOME PAGE
+# 16. HOME PAGE
 # ============================================================
 
 if page == "Home":
 
     if recommendations.empty:
-
         st.info(
             "No personalized recommendations are currently available."
         )
@@ -1246,29 +1149,22 @@ if page == "Home":
                     </div>
 
                 </div>
-
             </div>
             """
         )
 
-        hero_button1, hero_button2 = st.columns(
-            [1, 5]
-        )
+        hero_button1, hero_button2 = st.columns([1, 5])
 
         with hero_button1:
-
             if st.button(
                 "View Movie",
                 key="hero_movie_details",
                 use_container_width=True
             ):
-
                 st.session_state.selected_movie_title = hero_title
-
                 st.rerun()
 
         with hero_button2:
-
             st.caption(
                 "Selected using your Content-Based and "
                 "Collaborative Filtering preferences."
@@ -1293,7 +1189,6 @@ if page == "Home":
             for column_index, (_, movie) in enumerate(
                 movie_row.iterrows()
             ):
-
                 with columns[column_index]:
 
                     rank = row_index * 5 + column_index + 1
@@ -1321,7 +1216,6 @@ if page == "Home":
             for index, (_, movie) in enumerate(
                 more_movies.iterrows()
             ):
-
                 with columns[index % 5]:
 
                     render_movie_card(
@@ -1333,7 +1227,7 @@ if page == "Home":
 
 
 # ============================================================
-# 16. DISCOVER PAGE
+# 17. DISCOVER PAGE
 # ============================================================
 
 elif page == "Discover":
@@ -1351,21 +1245,15 @@ elif page == "Discover":
     all_genres = set()
 
     for genre_string in catalogue["Genres"].dropna():
-
         all_genres.update(
             get_genres(genre_string)
         )
 
-    genre_options = [
-        "All Genres"
-    ] + sorted(all_genres)
+    genre_options = ["All Genres"] + sorted(all_genres)
 
-    filter1, filter2 = st.columns(
-        [2, 1]
-    )
+    filter1, filter2 = st.columns([2, 1])
 
     with filter1:
-
         search_query = st.text_input(
             "Search movie titles",
             placeholder="Search Titanic, Toy Story, Batman...",
@@ -1373,21 +1261,17 @@ elif page == "Discover":
         )
 
     with filter2:
-
         selected_genre = st.selectbox(
             "Select genre",
             genre_options,
             key="discover_genre"
         )
 
-    # --------------------------------------------------------
-    # SEARCH THE FULL CATALOGUE
-    # --------------------------------------------------------
+    # Search the full catalogue.
 
     filtered = catalogue.copy()
 
     if search_query.strip():
-
         filtered = filtered[
             filtered["Title"].str.contains(
                 search_query.strip(),
@@ -1398,7 +1282,6 @@ elif page == "Discover":
         ]
 
     if selected_genre != "All Genres":
-
         filtered = filtered[
             filtered["Genres"].apply(
                 lambda value:
@@ -1407,10 +1290,6 @@ elif page == "Discover":
         ]
 
     filtered = filtered.reset_index(drop=True)
-
-    # --------------------------------------------------------
-    # OPTIONAL MODEL SCORES
-    # --------------------------------------------------------
 
     filtered["HybridScore"] = filtered["MovieID"].map(
         lambda movie_id:
@@ -1428,13 +1307,10 @@ elif page == "Discover":
 
         st.html("""
         <div class="empty-state">
-
             <h3>No movies found</h3>
-
             <p>
                 Try another search or choose a different genre.
             </p>
-
         </div>
         """)
 
@@ -1447,8 +1323,6 @@ elif page == "Discover":
             key="discover_display_count"
         )
 
-        # Reset pagination whenever search or genre changes.
-
         filter_signature = (
             search_query.strip().casefold(),
             selected_genre,
@@ -1459,21 +1333,15 @@ elif page == "Discover":
             st.session_state.get("discover_filter_signature")
             != filter_signature
         ):
-
             st.session_state.discover_page = 0
-
-            st.session_state.discover_filter_signature = (
-                filter_signature
-            )
+            st.session_state.discover_filter_signature = filter_signature
 
         if "discover_page" not in st.session_state:
-
             st.session_state.discover_page = 0
 
         total_pages = max(
             1,
-            (len(filtered) + display_count - 1)
-            // display_count
+            (len(filtered) + display_count - 1) // display_count
         )
 
         st.session_state.discover_page = max(
@@ -1484,26 +1352,18 @@ elif page == "Discover":
             )
         )
 
-        nav1, nav2, nav3 = st.columns(
-            [1, 3, 1]
-        )
+        nav1, nav2, nav3 = st.columns([1, 3, 1])
 
         with nav1:
-
             if st.button(
                 "← Previous",
-                disabled=(
-                    st.session_state.discover_page == 0
-                ),
+                disabled=(st.session_state.discover_page == 0),
                 key="discover_previous"
             ):
-
                 st.session_state.discover_page -= 1
-
                 st.rerun()
 
         with nav2:
-
             st.markdown(
                 f"""
                 <div style="
@@ -1519,23 +1379,18 @@ elif page == "Discover":
             )
 
         with nav3:
-
             if st.button(
                 "Next →",
                 disabled=(
-                    st.session_state.discover_page
-                    >= total_pages - 1
+                    st.session_state.discover_page >= total_pages - 1
                 ),
                 key="discover_next"
             ):
-
                 st.session_state.discover_page += 1
-
                 st.rerun()
 
         start = (
-            st.session_state.discover_page
-            * display_count
+            st.session_state.discover_page * display_count
         )
 
         page_movies = filtered.iloc[
@@ -1549,15 +1404,11 @@ elif page == "Discover":
 
         for row_index, movie_row in enumerate(rows):
 
-            columns = st.columns(
-                5,
-                gap="medium"
-            )
+            columns = st.columns(5, gap="medium")
 
             for column_index, (_, movie) in enumerate(
                 movie_row.iterrows()
             ):
-
                 with columns[column_index]:
 
                     rank = (
@@ -1566,9 +1417,6 @@ elif page == "Discover":
                         + column_index
                         + 1
                     )
-
-                    # Discover cards do NOT display fabricated
-                    # recommendation match scores.
 
                     render_movie_card(
                         movie,
@@ -1579,7 +1427,7 @@ elif page == "Discover":
 
 
 # ============================================================
-# 17. MY RECOMMENDATIONS PAGE
+# 18. MY RECOMMENDATIONS PAGE
 # ============================================================
 
 elif page == "My Recommendations":
@@ -1599,20 +1447,9 @@ elif page == "My Recommendations":
 
         metric1, metric2, metric3 = st.columns(3)
 
-        metric1.metric(
-            "Selected User",
-            selected_user
-        )
-
-        metric2.metric(
-            "Recommendations",
-            len(recommendations)
-        )
-
-        metric3.metric(
-            "Content Weight",
-            f"{float(best_alpha):.0%}"
-        )
+        metric1.metric("Selected User", selected_user)
+        metric2.metric("Recommendations", len(recommendations))
+        metric3.metric("Content Weight", f"{float(best_alpha):.0%}")
 
         st.caption(
             "The hybrid model combines Content-Based and "
@@ -1626,9 +1463,7 @@ elif page == "My Recommendations":
             key="my_recommendation_count"
         )
 
-        selected_movies = recommendations.head(
-            display_count
-        )
+        selected_movies = recommendations.head(display_count)
 
         rows = [
             selected_movies.iloc[i:i + 5]
@@ -1637,22 +1472,14 @@ elif page == "My Recommendations":
 
         for row_index, movie_row in enumerate(rows):
 
-            columns = st.columns(
-                5,
-                gap="medium"
-            )
+            columns = st.columns(5, gap="medium")
 
             for column_index, (_, movie) in enumerate(
                 movie_row.iterrows()
             ):
-
                 with columns[column_index]:
 
-                    rank = (
-                        row_index * 5
-                        + column_index
-                        + 1
-                    )
+                    rank = row_index * 5 + column_index + 1
 
                     render_movie_card(
                         movie,
@@ -1663,7 +1490,7 @@ elif page == "My Recommendations":
 
 
 # ============================================================
-# 18. SELECTED MOVIE DETAILS
+# 19. SELECTED MOVIE DETAILS
 # ============================================================
 
 if st.session_state.selected_movie_title:
@@ -1674,7 +1501,33 @@ if st.session_state.selected_movie_title:
 
 
 # ============================================================
-# 19. FOOTER
+# 20. TMDB ERROR DIAGNOSTIC
+# ============================================================
+
+# Check the first recommendation for an API error.
+# This displays the actual issue without revealing the API key.
+
+if not recommendations.empty:
+
+    diagnostic_movie = str(
+        recommendations.iloc[0]["Title"]
+    )
+
+    diagnostic_result = get_tmdb_movie(
+        diagnostic_movie,
+        TMDB_API_KEY
+    )
+
+    if diagnostic_result and diagnostic_result.get("_error"):
+
+        st.warning(
+            "TMDB poster service: "
+            + diagnostic_result["_error"]
+        )
+
+
+# ============================================================
+# 21. FOOTER
 # ============================================================
 
 st.html("""
